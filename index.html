@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>가치 카드 우선순위 게임 · 1일 1바이브코딩 #039</title>
+  <meta name="description" content="가치 카드 10장을 5장, 다시 3장으로 압축하며 자기 가치관을 탐색하는 도덕 교과 활동. 학생 식별 정보 미수집.">
+  <style>
+    :root {
+      --canvas: #faf9f5;
+      --surface-soft: #f5f0e8;
+      --surface-card: #efe9de;
+      --surface-cream-strong: #e8e0d2;
+      --surface-dark: #181715;
+      --surface-dark-elevated: #252320;
+      --primary: #cc785c;
+      --primary-active: #a9583e;
+      --primary-soft: #f3e1d8;
+      --ink: #141413;
+      --body: #3d3d3a;
+      --body-strong: #252523;
+      --muted: #6c6a64;
+      --muted-soft: #8e8b82;
+      --hairline: #e6dfd8;
+      --hairline-soft: #ebe6df;
+      --on-primary: #ffffff;
+      --on-dark: #faf9f5;
+      --on-dark-soft: #a09d96;
+
+      --r-sm: 6px;
+      --r-md: 8px;
+      --r-lg: 12px;
+      --r-xl: 16px;
+      --r-pill: 9999px;
+
+      --serif: Georgia, "Times New Roman", "Noto Serif KR", serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+
+      --shadow-card: 0 1px 0 rgba(20, 20, 19, 0.04), 0 1px 2px rgba(20, 20, 19, 0.04);
+      --shadow-card-hover: 0 2px 6px rgba(20, 20, 19, 0.08), 0 1px 2px rgba(20, 20, 19, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--canvas);
+      color: var(--ink);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a, button { font-family: inherit; }
+
+    /* Header */
+    header.topnav {
+      height: 64px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--hairline-soft);
+      background: var(--canvas);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .wordmark {
+      font-family: var(--serif);
+      font-size: 20px;
+      letter-spacing: -0.3px;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .wordmark-mark {
+      width: 18px; height: 18px;
+      background: var(--primary);
+      border-radius: 50%;
+      display: inline-block;
+      position: relative;
+    }
+    .wordmark-mark::before, .wordmark-mark::after {
+      content: ""; position: absolute; inset: 0;
+      background: var(--primary);
+      border-radius: 50%;
+    }
+    .wordmark-mark::before { transform: scale(1.4) rotate(45deg); clip-path: polygon(45% 0, 55% 0, 55% 100%, 45% 100%); }
+    .wordmark-mark::after  { transform: rotate(0deg); clip-path: polygon(0 45%, 100% 45%, 100% 55%, 0 55%); }
+    .progress-pill {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      padding: 4px 12px;
+      border-radius: var(--r-pill);
+      background: var(--surface-card);
+      color: var(--ink);
+    }
+
+    /* Main */
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 32px 24px 160px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 400;
+      letter-spacing: -0.5px;
+      line-height: 1.15;
+      color: var(--ink);
+      margin: 0 0 12px;
+    }
+    .stage-1 h1, .stage-2 h1 { font-size: 36px; }
+    .stage-3 h1 { font-size: 48px; letter-spacing: -1px; line-height: 1.1; }
+    .lead {
+      color: var(--body);
+      font-size: 16px;
+      margin: 0 0 32px;
+      max-width: 60ch;
+    }
+
+    /* Cards list */
+    .cards {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .card {
+      background: var(--surface-card);
+      border: 1px solid var(--hairline);
+      border-radius: var(--r-lg);
+      padding: 14px 12px 14px 16px;
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      transition: background-color 150ms ease, border-color 150ms ease, transform 250ms ease, opacity 150ms ease;
+      cursor: grab;
+    }
+    .card:hover { background: var(--surface-cream-strong); border-color: var(--surface-cream-strong); }
+    .card:active { cursor: grabbing; }
+    .card.dragging { opacity: 0.4; }
+    .card.drop-target { border-color: var(--primary); border-style: dashed; }
+    .card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+    .rank {
+      font-family: var(--serif);
+      font-size: 22px;
+      color: var(--muted);
+      font-weight: 400;
+      text-align: center;
+    }
+    .rank-1 .rank { color: var(--primary); font-weight: 500; }
+
+    .card-body { min-width: 0; }
+    .card-name {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--ink);
+      letter-spacing: -0.1px;
+    }
+    .card-desc {
+      font-size: 14px;
+      color: var(--body);
+      margin-top: 2px;
+      line-height: 1.45;
+    }
+    .card-desc[hidden] { display: none; }
+
+    .card-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .iconbtn {
+      width: 36px; height: 36px;
+      border: 1px solid var(--hairline);
+      background: var(--canvas);
+      border-radius: var(--r-md);
+      color: var(--body);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+      padding: 0;
+    }
+    .iconbtn:hover { background: var(--surface-cream-strong); color: var(--ink); }
+    .iconbtn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .iconbtn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .iconbtn svg { width: 16px; height: 16px; }
+
+    /* Stage 3 highlight (final TOP 3) */
+    .stage-3 .cards { gap: 14px; }
+    .stage-3 .card { padding: 18px; }
+    .stage-3 .card.rank-1 {
+      background: var(--surface-dark);
+      border-color: var(--surface-dark);
+      color: var(--on-dark);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .stage-3 .card.rank-1 .rank { display: none; }
+    .stage-3 .card.rank-1 .card-actions { display: none; }
+    .stage-3 .card.rank-1 .card-body { display: flex; flex-direction: column; gap: 6px; }
+    .stage-3 .card.rank-1 .card-name {
+      color: var(--on-dark);
+      font-family: var(--serif);
+      font-size: 44px;
+      font-weight: 400;
+      letter-spacing: -0.5px;
+      line-height: 1.1;
+    }
+    .stage-3 .card.rank-1 .card-desc { color: var(--on-dark-soft); font-size: 16px; }
+    .stage-3 .card.rank-1::before {
+      content: "1위";
+      font-size: 12px;
+      letter-spacing: 1.5px;
+      color: var(--primary);
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    /* Memo */
+    .memo {
+      margin-top: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .memo label {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    .memo textarea {
+      width: 100%;
+      min-height: 80px;
+      padding: 12px 14px;
+      border-radius: var(--r-md);
+      border: 1px solid var(--hairline);
+      background: var(--canvas);
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--ink);
+      resize: vertical;
+      transition: border-color 150ms ease;
+    }
+    .memo textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.18);
+    }
+    .memo .count { font-size: 12px; color: var(--muted-soft); text-align: right; }
+
+    /* Action bar */
+    .actionbar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      background: var(--canvas);
+      border-top: 1px solid var(--hairline-soft);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      z-index: 20;
+    }
+    .actionbar-inner {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .btn {
+      height: 44px;
+      padding: 0 22px;
+      border-radius: var(--r-md);
+      font-size: 14px;
+      font-weight: 500;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary { background: var(--primary); color: var(--on-primary); }
+    .btn-primary:hover { background: var(--primary-active); }
+    .btn-primary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+    .btn-secondary {
+      background: var(--canvas);
+      color: var(--ink);
+      border-color: var(--hairline);
+    }
+    .btn-secondary:hover { background: var(--surface-card); }
+    .btn-secondary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .btn-link {
+      background: transparent;
+      color: var(--ink);
+      text-decoration: underline;
+      text-underline-offset: 4px;
+      padding: 0 4px;
+      height: auto;
+      border: none;
+    }
+    .btn-link:hover { color: var(--primary); }
+
+    /* Stage 3 final action layout */
+    .stage-3 .actionbar-inner { justify-content: space-between; }
+
+    /* Reset modal */
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(20, 20, 19, 0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 50;
+      padding: 24px;
+    }
+    .modal-backdrop[hidden] { display: none; }
+    .modal {
+      background: var(--canvas);
+      border-radius: var(--r-lg);
+      padding: 28px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 12px 40px rgba(20, 20, 19, 0.25);
+    }
+    .modal h2 {
+      font-family: var(--serif);
+      font-weight: 400;
+      font-size: 22px;
+      margin: 0 0 8px;
+      color: var(--ink);
+    }
+    .modal p { color: var(--body); margin: 0 0 20px; font-size: 15px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+    /* Footer caption */
+    .foot-caption {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 24px 32px;
+      color: var(--muted-soft);
+      font-size: 12px;
+      letter-spacing: 0.3px;
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+      }
+    }
+
+    /* Mobile tweaks */
+    @media (max-width: 560px) {
+      header.topnav { padding: 0 16px; }
+      main { padding: 24px 16px 180px; }
+      .stage-1 h1, .stage-2 h1 { font-size: 28px; }
+      .stage-3 h1 { font-size: 36px; }
+      .card { grid-template-columns: 24px 1fr auto; padding: 12px; gap: 10px; }
+      .rank { font-size: 18px; }
+      .card-name { font-size: 16px; }
+      .actionbar { padding: 12px 16px; }
+      .btn { padding: 0 16px; font-size: 13px; }
+    }
+
+    .visually-hidden {
+      position: absolute !important;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+  </style>
+</head>
+<body>
+  <header class="topnav">
+    <div class="wordmark">
+      <span class="wordmark-mark" aria-hidden="true"></span>
+      <span>가치 카드</span>
+    </div>
+    <div class="progress-pill" id="progressPill" aria-live="polite">1 / 3 · 10장</div>
+  </header>
+
+  <main id="main" class="stage-1" aria-labelledby="stageTitle">
+    <h1 id="stageTitle">지금 너에게 더 중요한 가치는?</h1>
+    <p class="lead" id="stageLead">
+      위로 올릴수록 더 중요한 가치예요. 카드를 끌어서(드래그) 옮기거나, 화살표 버튼으로 순위를 바꿔 보세요.
+      카드를 한 번 누르면 설명도 펼쳐서 볼 수 있어요.
+    </p>
+
+    <ol class="cards" id="cardList" aria-label="가치 카드 순위 목록"></ol>
+
+    <section class="memo" id="memoSection" hidden>
+      <label for="memoText" id="memoLabel">왜 이 카드들을 골랐어요? (선택)</label>
+      <textarea id="memoText" maxlength="120" aria-describedby="memoCount" placeholder="한 줄로 짧게 적어도 좋아요."></textarea>
+      <div class="count" id="memoCount">0 / 120</div>
+    </section>
+  </main>
+
+  <p class="foot-caption">개인정보를 수집하지 않습니다. 모든 결과는 휘발성이며, PNG는 내 기기에만 저장됩니다. · 1일 1바이브코딩 #039</p>
+
+  <nav class="actionbar" aria-label="단계 이동">
+    <div class="actionbar-inner" id="actionbarInner">
+      <button class="btn btn-link" id="prevBtn" hidden>← 이전 단계</button>
+      <button class="btn btn-primary" id="nextBtn">다음 단계: 5장으로</button>
+    </div>
+  </nav>
+
+  <div class="modal-backdrop" id="resetModal" hidden role="dialog" aria-modal="true" aria-labelledby="resetTitle">
+    <div class="modal">
+      <h2 id="resetTitle">처음부터 다시 시작할까요?</h2>
+      <p>지금까지 정한 순위와 메모는 모두 사라져요.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="resetCancel">취소</button>
+        <button class="btn btn-primary" id="resetConfirm">다시 시작</button>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="exportCanvas" width="1080" height="1080" style="display:none"></canvas>
+
+  <script>
+    // === Value cards (도덕 핵심 가치 10) ===
+    const VALUES = [
+      { id: 'honesty',        name: '정직',  desc: '거짓이나 꾸밈 없이 사실 그대로 말하고 행동해요.' },
+      { id: 'friendship',     name: '우정',  desc: '서로를 아끼고, 어려울 때 곁을 지켜요.' },
+      { id: 'freedom',        name: '자유',  desc: '스스로 생각하고 선택할 수 있는 힘을 가져요.' },
+      { id: 'responsibility', name: '책임',  desc: '내가 한 일과 한 말을 끝까지 돌봐요.' },
+      { id: 'justice',        name: '정의',  desc: '약한 사람을 모른 척하지 않고 공정하게 대해요.' },
+      { id: 'care',           name: '배려',  desc: '다른 사람의 마음과 처지를 먼저 살펴요.' },
+      { id: 'diligence',      name: '성실',  desc: '꾸준히, 정성껏 자기 할 일을 해내요.' },
+      { id: 'respect',        name: '존중',  desc: '나와 다른 사람도 소중히 여겨요.' },
+      { id: 'cooperation',    name: '협력',  desc: '함께 힘을 모아 더 큰 일을 해내요.' },
+      { id: 'courage',        name: '용기',  desc: '두려워도 옳다고 믿는 것을 해내요.' }
+    ];
+
+    // === App state ===
+    /** @type {{stage: 1|2|3, order: typeof VALUES, memo5: string, memo3: string, expanded: Set<string>}} */
+    const state = {
+      stage: 1,
+      order: shuffle([...VALUES]),
+      memo5: '',
+      memo3: '',
+      expanded: new Set()
+    };
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    const STAGE_CONFIG = {
+      1: { count: 10, title: '지금 너에게 더 중요한 가치는?',
+           lead: '위로 올릴수록 더 중요한 가치예요. 카드를 끌어서(드래그) 옮기거나, 화살표 버튼으로 순위를 바꿔 보세요. 카드를 한 번 누르면 설명도 펼쳐서 볼 수 있어요.',
+           cta: '다음 단계: 5장으로', progress: '1 / 3 · 10장', showMemo: false },
+      2: { count: 5,  title: '이 5개 중 정말 중요한 건?',
+           lead: '10장에서 5장으로 좁혔어요. 다시 한 번 순서를 살펴보세요. 원하면 한 줄로 이유도 적을 수 있어요.',
+           cta: '다음 단계: 3장으로', progress: '2 / 3 · 5장',
+           showMemo: true, memoLabel: '왜 이 5개를 골랐어요? (선택)', memoField: 'memo5' },
+      3: { count: 3,  title: '너의 TOP 3 가치',
+           lead: '가장 중요한 3가지가 정해졌어요. 1순위 가치에 대해 한 줄로 적어보면, 결과 카드에 함께 담겨요.',
+           cta: '결과를 PNG로 받기', progress: '3 / 3 · 3장',
+           showMemo: true, memoLabel: '1순위 가치에 대해 한 줄로. (선택)', memoField: 'memo3' }
+    };
+
+    // === DOM refs ===
+    const main = document.getElementById('main');
+    const stageTitle = document.getElementById('stageTitle');
+    const stageLead = document.getElementById('stageLead');
+    const progressPill = document.getElementById('progressPill');
+    const cardList = document.getElementById('cardList');
+    const memoSection = document.getElementById('memoSection');
+    const memoLabel = document.getElementById('memoLabel');
+    const memoText = document.getElementById('memoText');
+    const memoCount = document.getElementById('memoCount');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const resetModal = document.getElementById('resetModal');
+    const resetCancel = document.getElementById('resetCancel');
+    const resetConfirm = document.getElementById('resetConfirm');
+
+    // === Render ===
+    function visibleItems() {
+      const cfg = STAGE_CONFIG[state.stage];
+      return state.order.slice(0, cfg.count);
+    }
+
+    function render() {
+      const cfg = STAGE_CONFIG[state.stage];
+      main.classList.remove('stage-1', 'stage-2', 'stage-3');
+      main.classList.add(`stage-${state.stage}`);
+      stageTitle.textContent = cfg.title;
+      stageLead.textContent = cfg.lead;
+      progressPill.textContent = cfg.progress;
+      nextBtn.textContent = cfg.cta;
+
+      prevBtn.hidden = state.stage === 1;
+      prevBtn.textContent = state.stage === 3 ? '↺ 다시 처음부터' : '← 이전 단계';
+
+      if (cfg.showMemo) {
+        memoSection.hidden = false;
+        memoLabel.textContent = cfg.memoLabel;
+        memoText.value = state[cfg.memoField] || '';
+        updateMemoCount();
+      } else {
+        memoSection.hidden = true;
+      }
+
+      renderCards();
+    }
+
+    function renderCards() {
+      const items = visibleItems();
+      cardList.innerHTML = '';
+      items.forEach((item, idx) => {
+        const li = document.createElement('li');
+        li.className = 'card' + (idx === 0 ? ' rank-1' : '');
+        li.draggable = state.stage !== 3;
+        li.tabIndex = 0;
+        li.dataset.id = item.id;
+        li.setAttribute('role', 'group');
+        li.setAttribute('aria-label',
+          `${idx + 1}위, ${item.name}. ${item.desc} 화살표 위·아래 키로 순위 이동.`);
+
+        const rankEl = document.createElement('div');
+        rankEl.className = 'rank';
+        rankEl.textContent = String(idx + 1);
+        rankEl.setAttribute('aria-hidden', 'true');
+
+        const bodyEl = document.createElement('div');
+        bodyEl.className = 'card-body';
+        const nameEl = document.createElement('div');
+        nameEl.className = 'card-name';
+        nameEl.textContent = item.name;
+        const descEl = document.createElement('div');
+        descEl.className = 'card-desc';
+        descEl.textContent = item.desc;
+        descEl.hidden = !(state.expanded.has(item.id) || state.stage === 3);
+        bodyEl.appendChild(nameEl);
+        bodyEl.appendChild(descEl);
+
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'card-actions';
+        if (state.stage !== 3) {
+          actionsEl.appendChild(makeIconButton('up', idx === 0, () => moveBy(item.id, -1)));
+          actionsEl.appendChild(makeIconButton('down', idx === items.length - 1, () => moveBy(item.id, 1)));
+        }
+
+        li.appendChild(rankEl);
+        li.appendChild(bodyEl);
+        li.appendChild(actionsEl);
+
+        bindCardEvents(li, item.id);
+        cardList.appendChild(li);
+      });
+    }
+
+    function makeIconButton(dir, disabled, onClick) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'iconbtn';
+      btn.disabled = disabled;
+      btn.setAttribute('aria-label', dir === 'up' ? '순위 한 칸 올리기' : '순위 한 칸 내리기');
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNS, 'svg');
+      svg.setAttribute('viewBox', '0 0 16 16');
+      svg.setAttribute('aria-hidden', 'true');
+      const path = document.createElementNS(svgNS, 'path');
+      path.setAttribute('fill', 'currentColor');
+      path.setAttribute('d', dir === 'up'
+        ? 'M8 3 L13 9 L11.5 10.4 L8 6.6 L4.5 10.4 L3 9 Z'
+        : 'M8 13 L3 7 L4.5 5.6 L8 9.4 L11.5 5.6 L13 7 Z');
+      svg.appendChild(path);
+      btn.appendChild(svg);
+      btn.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+      return btn;
+    }
+
+    function bindCardEvents(li, id) {
+      // Toggle expand on click (when not dragging)
+      let pressMoved = false;
+      li.addEventListener('mousedown', () => { pressMoved = false; });
+      li.addEventListener('mousemove', () => { pressMoved = true; });
+      li.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        if (pressMoved) return;
+        if (state.expanded.has(id)) state.expanded.delete(id);
+        else state.expanded.add(id);
+        renderCards();
+      });
+
+      // Keyboard nav
+      li.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp')   { e.preventDefault(); moveBy(id, -1); focusCard(id); }
+        if (e.key === 'ArrowDown') { e.preventDefault(); moveBy(id,  1); focusCard(id); }
+        if (e.key === 'Enter' || e.key === ' ') {
+          if (e.target === li) {
+            e.preventDefault();
+            if (state.expanded.has(id)) state.expanded.delete(id);
+            else state.expanded.add(id);
+            renderCards();
+            focusCard(id);
+          }
+        }
+      });
+
+      // Drag
+      if (state.stage !== 3) {
+        li.addEventListener('dragstart', (e) => {
+          li.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', id);
+        });
+        li.addEventListener('dragend', () => {
+          li.classList.remove('dragging');
+          document.querySelectorAll('.card.drop-target').forEach(el => el.classList.remove('drop-target'));
+        });
+        li.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          if (!li.classList.contains('dragging')) li.classList.add('drop-target');
+        });
+        li.addEventListener('dragleave', () => li.classList.remove('drop-target'));
+        li.addEventListener('drop', (e) => {
+          e.preventDefault();
+          li.classList.remove('drop-target');
+          const srcId = e.dataTransfer.getData('text/plain');
+          if (!srcId || srcId === id) return;
+          moveBefore(srcId, id);
+        });
+      }
+    }
+
+    function focusCard(id) {
+      requestAnimationFrame(() => {
+        const el = cardList.querySelector(`.card[data-id="${id}"]`);
+        if (el) el.focus();
+      });
+    }
+
+    function moveBy(id, delta) {
+      const cfg = STAGE_CONFIG[state.stage];
+      const slice = state.order.slice(0, cfg.count);
+      const idx = slice.findIndex(v => v.id === id);
+      const target = idx + delta;
+      if (idx < 0 || target < 0 || target >= slice.length) return;
+      const all = state.order.slice();
+      [all[idx], all[target]] = [all[target], all[idx]];
+      state.order = all;
+      renderCards();
+    }
+
+    function moveBefore(srcId, dstId) {
+      const cfg = STAGE_CONFIG[state.stage];
+      const slice = state.order.slice(0, cfg.count);
+      const sIdx = slice.findIndex(v => v.id === srcId);
+      const dIdx = slice.findIndex(v => v.id === dstId);
+      if (sIdx < 0 || dIdx < 0 || sIdx === dIdx) return;
+      const head = state.order.slice(0, cfg.count);
+      const tail = state.order.slice(cfg.count);
+      const [moved] = head.splice(sIdx, 1);
+      head.splice(dIdx, 0, moved);
+      state.order = [...head, ...tail];
+      renderCards();
+    }
+
+    function updateMemoCount() {
+      const max = memoText.maxLength;
+      memoCount.textContent = `${memoText.value.length} / ${max}`;
+    }
+
+    memoText.addEventListener('input', () => {
+      const cfg = STAGE_CONFIG[state.stage];
+      if (cfg.memoField) state[cfg.memoField] = memoText.value;
+      updateMemoCount();
+    });
+
+    // === Stage navigation ===
+    nextBtn.addEventListener('click', () => {
+      if (state.stage === 1) { state.stage = 2; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      else if (state.stage === 2) { state.stage = 3; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+      else { exportPng(); }
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (state.stage === 3) {
+        resetModal.hidden = false;
+        resetCancel.focus();
+      } else if (state.stage === 2) {
+        state.stage = 1;
+        render();
+      }
+    });
+
+    resetCancel.addEventListener('click', () => { resetModal.hidden = true; });
+    resetConfirm.addEventListener('click', () => {
+      resetModal.hidden = true;
+      state.stage = 1;
+      state.order = shuffle([...VALUES]);
+      state.memo5 = '';
+      state.memo3 = '';
+      state.expanded.clear();
+      render();
+      window.scrollTo({ top: 0 });
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !resetModal.hidden) {
+        resetModal.hidden = true;
+      }
+    });
+
+    // === PNG export ===
+    function exportPng() {
+      const canvas = document.getElementById('exportCanvas');
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width, H = canvas.height;
+
+      ctx.fillStyle = '#181715';
+      ctx.fillRect(0, 0, W, H);
+
+      // Header label
+      ctx.fillStyle = '#a09d96';
+      ctx.font = '500 22px system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif';
+      ctx.textBaseline = 'top';
+      ctx.fillText('MY · TOP 3 가치 카드', 80, 80);
+
+      // Divider
+      ctx.strokeStyle = '#3a3733';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(80, 130);
+      ctx.lineTo(W - 80, 130);
+      ctx.stroke();
+
+      const top3 = state.order.slice(0, 3);
+
+      // 1순위 — big coral
+      ctx.fillStyle = '#cc785c';
+      ctx.font = '500 28px system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif';
+      ctx.fillText('1위', 80, 180);
+
+      ctx.fillStyle = '#cc785c';
+      ctx.font = '400 96px Georgia, "Times New Roman", "Noto Serif KR", serif';
+      ctx.fillText(top3[0].name, 80, 220);
+
+      ctx.fillStyle = '#a09d96';
+      ctx.font = '400 24px system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif';
+      wrapText(ctx, top3[0].desc, 80, 360, W - 160, 32);
+
+      // 1순위 memo (if any)
+      if (state.memo3.trim()) {
+        const memoLines = wrapText(ctx, state.memo3.trim(), 80, 460, W - 160, 32, true);
+        ctx.fillStyle = '#faf9f5';
+        ctx.font = '400 26px Georgia, "Times New Roman", "Noto Serif KR", serif';
+        const startY = 460;
+        memoLines.forEach((ln, i) => ctx.fillText('“ ' + ln + (i === memoLines.length - 1 ? ' ”' : ''), 80, startY + i * 38));
+      }
+
+      // 2위
+      ctx.fillStyle = '#a09d96';
+      ctx.font = '500 22px system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif';
+      ctx.fillText('2위', 80, 660);
+      ctx.fillStyle = '#faf9f5';
+      ctx.font = '400 56px Georgia, "Times New Roman", "Noto Serif KR", serif';
+      ctx.fillText(top3[1].name, 80, 690);
+      ctx.fillStyle = '#a09d96';
+      ctx.font = '400 20px system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif';
+      ctx.fillText(top3[1].desc, 80, 770);
+
+      // 3위
+      ctx.fillStyle = '#a09d96';
+      ctx.font = '500 22px system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif';
+      ctx.fillText('3위', 80, 820);
+      ctx.fillStyle = '#faf9f5';
+      ctx.font = '400 56px Georgia, "Times New Roman", "Noto Serif KR", serif';
+      ctx.fillText(top3[2].name, 80, 850);
+      ctx.fillStyle = '#a09d96';
+      ctx.font = '400 20px system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif';
+      ctx.fillText(top3[2].desc, 80, 930);
+
+      // Footer
+      const today = new Date().toISOString().slice(0, 10);
+      ctx.fillStyle = '#6c6a64';
+      ctx.font = '400 16px system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif';
+      ctx.fillText(today, 80, H - 110);
+      ctx.fillText('1일 1바이브코딩 #039 · 가치 카드 우선순위 게임', 80, H - 80);
+
+      // Download
+      const link = document.createElement('a');
+      link.download = `value-top3-${today}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    function wrapText(ctx, text, x, y, maxWidth, lineHeight, returnOnly) {
+      const words = text.split('');
+      const lines = [];
+      let line = '';
+      for (const ch of words) {
+        const test = line + ch;
+        if (ctx.measureText(test).width > maxWidth && line.length > 0) {
+          lines.push(line);
+          line = ch;
+        } else {
+          line = test;
+        }
+      }
+      if (line) lines.push(line);
+      if (returnOnly) return lines;
+      lines.forEach((ln, i) => ctx.fillText(ln, x, y + i * lineHeight));
+      return lines;
+    }
+
+    // === Init ===
+    render();
+  </script>
+</body>
+</html>
